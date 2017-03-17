@@ -100,6 +100,7 @@ export function createInstance (
   const instanceVars = Object.assign({
     Vue,
     weex: weexInstanceVar,
+    __register_static_styles__: (...args) => document.registerStaticStyles(...args), // eslint-disable-line
     // deprecated
     __weex_require_module__: weexInstanceVar.requireModule // eslint-disable-line
   }, timerAPIs)
