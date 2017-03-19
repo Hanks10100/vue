@@ -116,7 +116,7 @@ export function createPatchFunction (backend) {
       vnode.elm = vnode.ns
         ? nodeOps.createElementNS(vnode.ns, tag)
         : nodeOps.createElement(tag, vnode)
-      setScope(vnode)
+      // setScope(vnode)
 
       /* istanbul ignore if */
       if (__WEEX__) {
@@ -185,7 +185,7 @@ export function createPatchFunction (backend) {
     vnode.elm = vnode.componentInstance.$el
     if (isPatchable(vnode)) {
       invokeCreateHooks(vnode, insertedVnodeQueue)
-      setScope(vnode)
+      // setScope(vnode)
     } else {
       // empty component root.
       // skip all element-related modules except for ref (#3455)
