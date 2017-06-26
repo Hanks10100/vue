@@ -7,7 +7,7 @@ export const isReservedTag = makeMap(
   'a,div,img,image,text,span,richtext,input,switch,textarea,spinner,select,' +
   'slider,slider-neighbor,indicator,trisition,trisition-group,canvas,' +
   'list,cell,header,loading,loading-indicator,refresh,scrollable,scroller,' +
-  'video,web,embed,tabbar,tabheader,datepicker,timepicker,marquee,countdown',
+  'video,web,embed,tabbar,tabheader,datepicker,timepicker',
   true
 )
 
@@ -15,7 +15,7 @@ export const isReservedTag = makeMap(
 // more flexable than web
 export const canBeLeftOpenTag = makeMap(
   'web,spinner,switch,video,textarea,canvas,' +
-  'indicator,marquee,countdown',
+  'indicator',
   true
 )
 
