@@ -88,6 +88,33 @@ describe('framework APIs', () => {
     })
   })
 
+  it('send createFinish in nextTick', (done) => {
+    const instance = new Instance(runtime)
+    framework.createInstance(instance.id, `
+      new Promise(s => s()).then(() => {
+        new Vue({
+          el: 'body',
+          render: function (h) {
+            return h('div', {}, [
+              h('text', {}, ['Yo'])
+            ])
+          }
+        })
+      })
+    `)
+    setTimeout(() => {
+      expect(instance.getRealRoot()).toEqual({
+        type: 'div',
+        children: [{ type: 'text', attr: { value: 'Yo' }}]
+      })
+      const records = instance.history.callNative
+      const createBodyIndex = records.findIndex(x => x.method === 'createBody')
+      const createFinishIndex = records.findIndex(x => x.method === 'createFinish')
+      expect(createBodyIndex < createFinishIndex).toBe(true)
+      done()
+    }, 10)
+  })
+
   it('destroyInstance', (done) => {
     const instance = new Instance(runtime)
     framework.createInstance(instance.id, `

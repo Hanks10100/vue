@@ -102,8 +102,12 @@ export function createInstance (
     callFunction(instanceVars, appCode)
   }
 
-  // Send `createFinish` signal to native.
-  instance.document.taskCenter.send('dom', { action: 'createFinish' }, [])
+  // Send `createFinish` signal in next tick.
+  timerAPIs.setTimeout(() => {
+    instance.document.taskCenter.send('dom', { action: 'createFinish' }, [])
+  }, 0)
+
+  return instance
 }
 
 /**
