@@ -6128,6 +6128,104 @@ var patch = createPatchFunction({
 var platformDirectives = {
 };
 
+function getVNodeType (vnode) {
+  if (!vnode.tag) {
+    return ''
+  }
+  return vnode.tag.replace(/vue\-component\-(\d+\-)?/, '')
+}
+
+function isSimpleSpan (vnode) {
+  return vnode.children && vnode.children.length === 1 && !vnode.children[0].tag
+}
+
+var cssLengthRE = /^([+-]?[0-9]+(\.[0-9]+)?)(px|em|ex|%|in|cm|mm|pt|pc)$/i;
+function trimCSSUnit (prop) {
+  var res = String(prop).match(cssLengthRE);
+  if (res) {
+    return Number(res[1])
+  }
+  return prop
+}
+
+function parseStyle (vnode) {
+  if (!vnode || !vnode.data) {
+    return
+  }
+
+  var ref = vnode.data;
+  var staticStyle = ref.staticStyle;
+  var staticClass = ref.staticClass;
+  if (vnode.data.style || vnode.data.class || staticStyle || staticClass) {
+    var styles = Object.assign({}, staticStyle, vnode.data.style);
+
+    var cssMap = vnode.context.$options.style || {};
+    var classList = [].concat(staticClass, vnode.data.class);
+    classList.forEach(function (name) {
+      if (name && cssMap[name]) {
+        Object.assign(styles, cssMap[name]);
+      }
+    });
+
+    for (var key in styles) {
+      styles[key] = trimCSSUnit(styles[key]);
+    }
+    return styles
+  }
+}
+
+function convertVNodeChildren (children) {
+  if (!children.length) {
+    return
+  }
+
+  return children.map(function (vnode) {
+    var type = getVNodeType(vnode);
+    var props = { type: type };
+
+    // convert raw text node
+    if (!type) {
+      props.type = 'span';
+      props.attr = {
+        value: (vnode.text || '').trim()
+      };
+    } else {
+      props.style = parseStyle(vnode);
+      if (vnode.data) {
+        props.attr = vnode.data.attrs;
+        if (vnode.data.on) {
+          props.events = vnode.data.on;
+        }
+      }
+
+      if (type === 'span' && isSimpleSpan(vnode)) {
+        props.attr = props.attr || {};
+        props.attr.value = vnode.children[0].text.trim();
+        return props
+      }
+    }
+
+    if (vnode.children && vnode.children.length) {
+      props.children = convertVNodeChildren(vnode.children);
+    }
+
+    return props
+  })
+}
+
+var Richtext = {
+  name: 'richtext',
+  // abstract: true,
+  render: function render (h) {
+    return h('weex:richtext', {
+      on: this._events,
+      attrs: {
+        value: convertVNodeChildren(this.$options._renderChildren || [])
+      }
+    })
+  }
+};
+
 /*  */
 
 // Provides transition support for a single element/component.
@@ -6468,6 +6566,7 @@ var TransitionGroup = {
 // }
 
 var platformComponents = {
+  Richtext: Richtext,
   Transition: Transition$1,
   TransitionGroup: TransitionGroup
 };
@@ -6476,8 +6575,8 @@ var platformComponents = {
 
 var isReservedTag = makeMap(
   'template,script,style,element,content,slot,link,meta,svg,view,' +
-  'a,div,img,image,text,span,richtext,input,switch,textarea,spinner,select,' +
-  'slider,slider-neighbor,indicator,trisition,trisition-group,canvas,' +
+  'a,div,img,image,text,span,input,switch,textarea,spinner,select,' +
+  'slider,slider-neighbor,indicator,canvas,' +
   'list,cell,header,loading,loading-indicator,refresh,scrollable,scroller,' +
   'video,web,embed,tabbar,tabheader,datepicker,timepicker,marquee,countdown',
   true
@@ -6488,6 +6587,11 @@ var isReservedTag = makeMap(
 var canBeLeftOpenTag = makeMap(
   'web,spinner,switch,video,textarea,canvas,' +
   'indicator,marquee,countdown',
+  true
+);
+
+var isRuntimeComponent = makeMap(
+  'richtext,trisition,trisition-group',
   true
 );
 
@@ -6513,6 +6617,7 @@ function query (el, document) {
 // install platform specific utils
 Vue$2.config.mustUseProp = mustUseProp;
 Vue$2.config.isReservedTag = isReservedTag;
+Vue$2.config.isRuntimeComponent = isRuntimeComponent;
 Vue$2.config.isUnknownElement = isUnknownElement;
 
 // install platform runtime directives and components
