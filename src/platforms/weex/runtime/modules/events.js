@@ -9,6 +9,7 @@ function add (
   handler: Function,
   once: boolean,
   capture: boolean,
+  passive: boolean,
   params: void | Array<any>
 ) {
   if (capture) {
