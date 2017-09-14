@@ -8,7 +8,8 @@ function add (
   event: string,
   handler: Function,
   once: boolean,
-  capture: boolean
+  capture: boolean,
+  params: void | Array<any>
 ) {
   if (capture) {
     console.log('Weex do not support event in bubble phase.')
@@ -26,7 +27,7 @@ function add (
       }
     }
   }
-  target.addEvent(event, handler)
+  target.addEvent(event, handler, params)
 }
 
 function remove (

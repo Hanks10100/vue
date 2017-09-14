@@ -1,7 +1,7 @@
 /* @flow */
 
 import { warn } from 'core/util/index'
-import { cached, isUndef } from 'shared/util'
+import { cached, isUndef, isPlainObject } from 'shared/util'
 
 const normalizeEvent = cached((name: string): {
   name: string,
@@ -56,13 +56,17 @@ export function updateListeners (
   remove: Function,
   vm: Component
 ) {
-  let name, cur, old, event
+  let name, def, cur, old, event, params
   const toAdd = []
   let hasModifier = false
   for (name in on) {
-    cur = on[name]
+    def = cur = on[name]
     old = oldOn[name]
     event = normalizeEvent(name)
+    if (isPlainObject(def)) {
+      cur = def.handler
+      params = def.params
+    }
     if (!event.plain) hasModifier = true
     if (isUndef(cur)) {
       process.env.NODE_ENV !== 'production' && warn(
@@ -84,7 +88,7 @@ export function updateListeners (
     if (hasModifier) toAdd.sort(prioritizePlainEvents)
     for (let i = 0; i < toAdd.length; i++) {
       const event = toAdd[i]
-      add(event.name, event.handler, event.once, event.capture, event.passive)
+      add(event.name, event.handler, event.once, event.capture, event.passive, params)
     }
   }
   for (name in oldOn) {
