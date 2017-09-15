@@ -9,7 +9,8 @@ const normalizeEvent = cached((name: string): {
   once: boolean,
   capture: boolean,
   passive: boolean,
-  handler?: Function
+  handler?: Function,
+  params?: Function
 } => {
   const passive = name.charAt(0) === '&'
   name = passive ? name.slice(1) : name
@@ -56,7 +57,7 @@ export function updateListeners (
   remove: Function,
   vm: Component
 ) {
-  let name, def, cur, old, event, params
+  let name, def, cur, old, event
   const toAdd = []
   let hasModifier = false
   for (name in on) {
@@ -65,7 +66,7 @@ export function updateListeners (
     event = normalizeEvent(name)
     if (isPlainObject(def)) {
       cur = def.handler
-      params = def.params
+      event.params = def.params
     }
     if (!event.plain) hasModifier = true
     if (isUndef(cur)) {
@@ -88,7 +89,7 @@ export function updateListeners (
     if (hasModifier) toAdd.sort(prioritizePlainEvents)
     for (let i = 0; i < toAdd.length; i++) {
       const event = toAdd[i]
-      add(event.name, event.handler, event.once, event.capture, event.passive, params)
+      add(event.name, event.handler, event.once, event.capture, event.passive, event.params)
     }
   }
   for (name in oldOn) {
