@@ -409,8 +409,27 @@ function getInstanceTimer (instanceId, moduleGetter) {
     },
 
     // TODO: deprecated
+    deprecated_setTimeout (handler, delay) {
+      if (typeof global.setIntervalWeex === 'function') {
+        const timerId = global.setIntervalWeex(instanceId, () => {
+          handler.apply(null)
+          if (typeof global.clearIntervalWeex === 'function') {
+            global.clearIntervalWeex(instanceId, timerId)
+          }
+        }, delay)
+      }
+    },
+
+    // TODO: deprecated
+    deprecated_clearTimeout (timerId) {
+      if (typeof global.clearIntervalWeex === 'function') {
+        return global.clearIntervalWeex(instanceId, timerId)
+      }
+    },
+
+    // TODO: deprecated
     deprecated_setInterval (handler, delay) {
-      if (global.setIntervalWeex && typeof global.setIntervalWeex === 'function') {
+      if (typeof global.setIntervalWeex === 'function') {
         return global.setIntervalWeex(instanceId, handler, delay)
       }
       console.warn(`[JS Framework] can't find "global.setIntervalWeex",` +
@@ -419,7 +438,7 @@ function getInstanceTimer (instanceId, moduleGetter) {
 
     // TODO: deprecated
     deprecated_clearInterval (timerId) {
-      if (global.clearIntervalWeex && typeof global.clearIntervalWeex === 'function') {
+      if (typeof global.clearIntervalWeex === 'function') {
         return global.clearIntervalWeex(instanceId, timerId)
       }
     }
