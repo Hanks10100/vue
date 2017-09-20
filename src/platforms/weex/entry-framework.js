@@ -406,6 +406,22 @@ function getInstanceTimer (instanceId, moduleGetter) {
     },
     clearInterval: (n) => {
       timer.clearInterval(n)
+    },
+
+    // TODO: deprecated
+    deprecated_setInterval (handler, delay) {
+      if (global.setIntervalWeex && typeof global.setIntervalWeex === 'function') {
+        return global.setIntervalWeex(instanceId, handler, delay)
+      }
+      console.warn(`[JS Framework] can't find "global.setIntervalWeex",` +
+        ` please use "setInerval" instead!!`)
+    },
+
+    // TODO: deprecated
+    deprecated_clearInterval (timerId) {
+      if (global.clearIntervalWeex && typeof global.clearIntervalWeex === 'function') {
+        return global.clearIntervalWeex(instanceId, timerId)
+      }
     }
   }
   return timerAPIs
