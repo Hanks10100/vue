@@ -172,7 +172,6 @@ function fireEvent (instance, nodeId, type, e, domChanges, params) {
 
 function callback (instance, callbackId, data, ifKeepAlive) {
   const result = instance.document.taskCenter.callback(callbackId, data, ifKeepAlive)
-  instance.document.taskCenter.send('dom', { action: 'updateFinish' }, [])
   return result
 }
 
