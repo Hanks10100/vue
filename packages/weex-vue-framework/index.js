@@ -107,10 +107,10 @@ function createInstance (
   // It will declare some instance variables like `Vue`, HTML5 Timer APIs etc.
   var instanceVars = Object.assign({
     Vue: Vue,
-    weex: weexInstanceVar,
-    // deprecated
-    __weex_require_module__: weexInstanceVar.requireModule // eslint-disable-line
+    weex: weexInstanceVar
   }, timerAPIs, env.services);
+
+  appCode = "(function(global){ \n" + appCode + "\n })(Object.create(this))";
 
   if (!callFunctionNative(instanceVars, appCode)) {
     // If failed to compile functionBody on native side,
@@ -120,6 +120,8 @@ function createInstance (
 
   // Send `createFinish` signal to native.
   instance.document.taskCenter.send('dom', { action: 'createFinish' }, []);
+
+  return instance
 }
 
 /**
@@ -130,8 +132,8 @@ function createInstance (
 function destroyInstance (instanceId) {
   var instance = instances[instanceId];
   if (instance && instance.app instanceof instance.Vue) {
-    instance.document.destroy();
     instance.app.$destroy();
+    instance.document.destroy();
   }
   delete instances[instanceId];
 }
@@ -182,17 +184,16 @@ var jsHandlers = {
   }
 };
 
-function fireEvent (instance, nodeId, type, e, domChanges) {
+function fireEvent (instance, nodeId, type, e, domChanges, params) {
   var el = instance.document.getRef(nodeId);
   if (el) {
-    return instance.document.fireEvent(el, type, e, domChanges)
+    return instance.document.fireEvent(el, type, e, domChanges, params)
   }
   return new Error(("invalid element reference \"" + nodeId + "\""))
 }
 
 function callback (instance, callbackId, data, ifKeepAlive) {
   var result = instance.document.taskCenter.callback(callbackId, data, ifKeepAlive);
-  instance.document.taskCenter.send('dom', { action: 'updateFinish' }, []);
   return result
 }
 
@@ -313,10 +314,15 @@ function createVueModuleInstance (instanceId, moduleGetter) {
 
   // patch reserved tag detection to account for dynamically registered
   // components
+  var weexRegex = /^weex:/i;
   var isReservedTag = Vue.config.isReservedTag || (function () { return false; });
+  var isRuntimeComponent = Vue.config.isRuntimeComponent || (function () { return false; });
   Vue.config.isReservedTag = function (name) {
-    return components[name] || isReservedTag(name)
+    return (!isRuntimeComponent(name) && components[name]) ||
+      isReservedTag(name) ||
+      weexRegex.test(name)
   };
+  Vue.config.parsePlatformTagName = function (name) { return name.replace(weexRegex, ''); };
 
   // expose weex-specific info
   Vue.prototype.$instanceId = instanceId;
@@ -435,6 +441,41 @@ function getInstanceTimer (instanceId, moduleGetter) {
     },
     clearInterval: function (n) {
       timer.clearInterval(n);
+    },
+
+    // TODO: deprecated
+    deprecated_setTimeout: function deprecated_setTimeout (handler, delay) {
+      if (typeof global.setIntervalWeex === 'function') {
+        var timerId = global.setIntervalWeex(instanceId, function () {
+          handler.apply(null);
+          if (typeof global.clearIntervalWeex === 'function') {
+            global.clearIntervalWeex(instanceId, timerId);
+          }
+        }, delay);
+      }
+    },
+
+    // TODO: deprecated
+    deprecated_clearTimeout: function deprecated_clearTimeout (timerId) {
+      if (typeof global.clearIntervalWeex === 'function') {
+        return global.clearIntervalWeex(instanceId, timerId)
+      }
+    },
+
+    // TODO: deprecated
+    deprecated_setInterval: function deprecated_setInterval (handler, delay) {
+      if (typeof global.setIntervalWeex === 'function') {
+        return global.setIntervalWeex(instanceId, handler, delay)
+      }
+      console.warn("[JS Framework] can't find \"global.setIntervalWeex\"," +
+        " please use \"setInerval\" instead!!");
+    },
+
+    // TODO: deprecated
+    deprecated_clearInterval: function deprecated_clearInterval (timerId) {
+      if (typeof global.clearIntervalWeex === 'function') {
+        return global.clearIntervalWeex(instanceId, timerId)
+      }
     }
   };
   return timerAPIs
