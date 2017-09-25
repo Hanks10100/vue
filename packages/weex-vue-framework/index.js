@@ -132,8 +132,12 @@ function createInstance (
 function destroyInstance (instanceId) {
   var instance = instances[instanceId];
   if (instance && instance.app instanceof instance.Vue) {
-    instance.app.$destroy();
-    instance.document.destroy();
+    try {
+      instance.app.$destroy();
+    } catch (e) {
+    } finally {
+      instance.document.destroy();
+    }
   }
   delete instances[instanceId];
 }
