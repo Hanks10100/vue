@@ -116,8 +116,12 @@ export function createInstance (
 export function destroyInstance (instanceId) {
   const instance = instances[instanceId]
   if (instance && instance.app instanceof instance.Vue) {
-    instance.app.$destroy()
-    instance.document.destroy()
+    try {
+      instance.app.$destroy()
+    } catch (e) {
+    } finally {
+      instance.document.destroy()
+    }
   }
   delete instances[instanceId]
 }
