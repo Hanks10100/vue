@@ -169,13 +169,20 @@ const jsHandlers = {
 function fireEvent (instance, nodeId, type, e, domChanges, params) {
   const el = instance.document.getRef(nodeId)
   if (el) {
-    return instance.document.fireEvent(el, type, e, domChanges, params)
+    let result = null
+    try {
+      result = instance.document.fireEvent(el, type, e, domChanges, params)
+    } catch (e) {}
+    return result
   }
   return new Error(`invalid element reference "${nodeId}"`)
 }
 
 function callback (instance, callbackId, data, ifKeepAlive) {
-  const result = instance.document.taskCenter.callback(callbackId, data, ifKeepAlive)
+  let result = null
+  try {
+    result = instance.document.taskCenter.callback(callbackId, data, ifKeepAlive)
+  } catch (e) {}
   return result
 }
 
