@@ -235,29 +235,14 @@ var isNonPhrasingTag = makeMap(
  */
 
 // Regular Expressions for parsing tags and attributes
-var singleAttrIdentifier = /([^\s"'<>/=]+)/;
-var singleAttrAssign = /(?:=)/;
-var singleAttrValues = [
-  // attr value double quotes
-  /"([^"]*)"+/.source,
-  // attr value, single quotes
-  /'([^']*)'+/.source,
-  // attr value, no quotes
-  /([^\s"'=<>`]+)/.source
-];
-var attribute = new RegExp(
-  '^\\s*' + singleAttrIdentifier.source +
-  '(?:\\s*(' + singleAttrAssign.source + ')' +
-  '\\s*(?:' + singleAttrValues.join('|') + '))?'
-);
-
+var attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/;
 // could use https://www.w3.org/TR/1999/REC-xml-names-19990114/#NT-QName
 // but for Vue templates we can enforce a simple charset
 var ncname = '[a-zA-Z_][\\w\\-\\.]*';
-var qnameCapture = '((?:' + ncname + '\\:)?' + ncname + ')';
-var startTagOpen = new RegExp('^<' + qnameCapture);
+var qnameCapture = "((?:" + ncname + "\\:)?" + ncname + ")";
+var startTagOpen = new RegExp(("^<" + qnameCapture));
 var startTagClose = /^\s*(\/?)>/;
-var endTag = new RegExp('^<\\/' + qnameCapture + '[^>]*>');
+var endTag = new RegExp(("^<\\/" + qnameCapture + "[^>]*>"));
 var doctype = /^<!DOCTYPE [^>]+>/i;
 var comment = /^<!--/;
 var conditionalComment = /^<!\[/;
@@ -653,6 +638,8 @@ var buildRegex = cached(function (delimiters) {
   return new RegExp(open + '((?:.|\\n)+?)' + close, 'g')
 });
 
+
+
 function parseText (
   text,
   delimiters
@@ -662,23 +649,30 @@ function parseText (
     return
   }
   var tokens = [];
+  var rawTokens = [];
   var lastIndex = tagRE.lastIndex = 0;
-  var match, index;
+  var match, index, tokenValue;
   while ((match = tagRE.exec(text))) {
     index = match.index;
     // push text token
     if (index > lastIndex) {
-      tokens.push(JSON.stringify(text.slice(lastIndex, index)));
+      rawTokens.push(tokenValue = text.slice(lastIndex, index));
+      tokens.push(JSON.stringify(tokenValue));
     }
     // tag token
     var exp = parseFilters(match[1].trim());
     tokens.push(("_s(" + exp + ")"));
+    rawTokens.push({ '@binding': exp });
     lastIndex = index + match[0].length;
   }
   if (lastIndex < text.length) {
-    tokens.push(JSON.stringify(text.slice(lastIndex)));
+    rawTokens.push(tokenValue = text.slice(lastIndex));
+    tokens.push(JSON.stringify(tokenValue));
   }
-  return tokens.join('+')
+  return {
+    expression: tokens.join('+'),
+    tokens: rawTokens
+  }
 }
 
 /*  */
@@ -1055,7 +1049,7 @@ var isAndroid = UA && UA.indexOf('android') > 0;
 var isIOS = UA && /iphone|ipad|ipod|ios/.test(UA);
 var isChrome = UA && /chrome\/\d+/.test(UA) && !isEdge;
 
-// Firefix has a "watch" function on Object.prototype...
+// Firefox has a "watch" function on Object.prototype...
 var nativeWatch = ({}).watch;
 
 var supportsPassive = false;
@@ -1387,13 +1381,17 @@ function parse (
     }
   }
 
-  function endPre (element) {
+  function closeElement (element) {
     // check pre state
     if (element.pre) {
       inVPre = false;
     }
     if (platformIsPreTag(element.tag)) {
       inPre = false;
+    }
+    // apply post-transforms
+    for (var i = 0; i < postTransforms.length; i++) {
+      postTransforms[i](element, options);
     }
   }
 
@@ -1523,11 +1521,7 @@ function parse (
         currentParent = element;
         stack.push(element);
       } else {
-        endPre(element);
-      }
-      // apply post-transforms
-      for (var i$2 = 0; i$2 < postTransforms.length; i$2++) {
-        postTransforms[i$2](element, options);
+        closeElement(element);
       }
     },
 
@@ -1541,7 +1535,7 @@ function parse (
       // pop stack
       stack.length -= 1;
       currentParent = stack[stack.length - 1];
-      endPre(element);
+      closeElement(element);
     },
 
     chars: function chars (text) {
@@ -1573,11 +1567,12 @@ function parse (
         // only preserve whitespace if its not right after a starting tag
         : preserveWhitespace && children.length ? ' ' : '';
       if (text) {
-        var expression;
-        if (!inVPre && text !== ' ' && (expression = parseText(text, delimiters))) {
+        var res;
+        if (!inVPre && text !== ' ' && (res = parseText(text, delimiters))) {
           children.push({
             type: 2,
-            expression: expression,
+            expression: res.expression,
+            tokens: res.tokens,
             text: text
           });
         } else if (text !== ' ' || !children.length || children[children.length - 1].text !== ' ') {
@@ -1821,8 +1816,8 @@ function processAttrs (el) {
     } else {
       // literal attribute
       if (process.env.NODE_ENV !== 'production') {
-        var expression = parseText(value, delimiters);
-        if (expression) {
+        var res = parseText(value, delimiters);
+        if (res) {
           warn(
             name + "=\"" + value + "\": " +
             'Interpolation inside attributes has been removed. ' +
@@ -2566,7 +2561,7 @@ function mergeDataOrFn (
         : childVal;
       var defaultData = typeof parentVal === 'function'
         ? parentVal.call(vm)
-        : undefined;
+        : parentVal;
       if (instanceData) {
         return mergeData(instanceData, defaultData)
       } else {
@@ -3155,9 +3150,16 @@ function genProps (props) {
   var res = '';
   for (var i = 0; i < props.length; i++) {
     var prop = props[i];
-    res += "\"" + (prop.name) + "\":" + (transformSpecialNewlines(prop.value)) + ",";
+    res += "\"" + (prop.name) + "\":" + (generateValue(prop.value)) + ",";
   }
   return res.slice(0, -1)
+}
+
+function generateValue (value) {
+  if (typeof value === 'string') {
+    return transformSpecialNewlines(value)
+  }
+  return JSON.stringify(value)
 }
 
 // #3895, #4268
@@ -3477,7 +3479,7 @@ function parseStaticClass (staticClass, options) {
       var result = parseText(name, options.delimiters);
       if (result) {
         dynamic = true;
-        return result
+        return result.expression
       }
       return JSON.stringify(name)
     });
@@ -3549,7 +3551,7 @@ function parseStaticStyle (staticStyle, options) {
       var dynamicValue = parseText(value, options.delimiters);
       if (dynamicValue) {
         dynamic = true;
-        return key + ':' + dynamicValue
+        return key + ':' + dynamicValue.expression
       }
       return key + ':' + JSON.stringify(value)
     }).filter(function (result) { return result; });
@@ -3619,7 +3621,171 @@ var append = {
   genData: genData$3
 };
 
+/*  */
+
+function genText$1 (node) {
+  var value = node.type === 3
+    ? node.text
+    : node.type === 2
+      ? node.tokens.length === 1
+        ? node.tokens[0]
+        : node.tokens
+      : '';
+  return JSON.stringify(value)
+}
+
+function transformText (el) {
+  // weex <text> can only contain text, so the parser
+  // always generates a single child.
+  if (el.children.length) {
+    addAttr(el, 'value', genText$1(el.children[0]));
+    el.children = [];
+    el.plain = false;
+  }
+}
+
+/*  */
+
+function parseAttrName (name) {
+  return camelize(name.replace(bindRE, ''))
+}
+
+function transformVBind (el) {
+  for (var attr in el.attrsMap) {
+    if (bindRE.test(attr)) {
+      var name = parseAttrName(attr);
+      var value = {
+        '@binding': getAndRemoveAttr(el, attr)
+      };
+      delete el.attrsMap[attr];
+      el.attrsMap[name] = value;
+      el.attrsList.push({ name: name, value: value });
+      // addAttr(el, name, value)
+      // el.hasBindings = false
+    }
+  }
+}
+
+/*  */
+
+function hasConditionDirective (el) {
+  for (var attr in el.attrsMap) {
+    if (/^v\-if|v\-else|v\-else\-if$/.test(attr)) {
+      return true
+    }
+  }
+  return false
+}
+
+function getPrevMatch (el) {
+  if (el.parent && el.parent.children) {
+    var prev = el.parent.children[el.parent.children.length - 1];
+    return prev.attrsMap['[[match]]']
+  }
+}
+
+function transformVIf (el, options) {
+  if (hasConditionDirective(el)) {
+    var exp;
+    var ifExp = getAndRemoveAttr(el, 'v-if');
+    var elseifExp = getAndRemoveAttr(el, 'v-else-if');
+    if (ifExp) {
+      exp = ifExp;
+    } else {
+      var prevMatch = getPrevMatch(el);
+      if (prevMatch) {
+        exp = elseifExp
+          ? ("!(" + prevMatch + ") && (" + elseifExp + ")") // v-else-if
+          : ("!(" + prevMatch + ")"); // v-else
+      } else if (process.env.NODE_ENV !== 'production' && options.warn) {
+        options.warn(
+          "v-" + (elseifExp ? ('else-if="' + elseifExp + '"') : 'else') + " " +
+          "used on element <" + (el.tag) + "> without corresponding v-if."
+        );
+        return
+      }
+    }
+    el.attrsMap['[[match]]'] = exp;
+    el.attrsList.push({ name: '[[match]]', value: exp });
+    delete el.attrsMap['v-if'];
+    delete el.attrsMap['v-else-if'];
+    delete el.attrsMap['v-else'];
+  }
+}
+
+/*  */
+
+function transformVFor (el, options) {
+  var exp = getAndRemoveAttr(el, 'v-for');
+  if (!exp) {
+    return
+  }
+  var inMatch = exp.match(forAliasRE);
+  if (inMatch) {
+    var alias = inMatch[1].trim();
+    var desc = {
+      '@expression': inMatch[2].trim(),
+      '@alias': alias
+    };
+    var iteratorMatch = alias.match(forIteratorRE);
+    if (iteratorMatch) {
+      desc['@alias'] = iteratorMatch[1].trim();
+      desc['@index'] = iteratorMatch[2].trim();
+      if (iteratorMatch[3]) {
+        desc['@key'] = iteratorMatch[2].trim();
+        desc['@index'] = iteratorMatch[3].trim();
+      }
+    }
+    delete el.attrsMap['v-for'];
+    el.attrsMap['[[repeat]]'] = desc;
+    el.attrsList.push({ name: '[[repeat]]', value: desc });
+  } else if (process.env.NODE_ENV !== 'production' && options.warn) {
+    options.warn(("Invalid v-for expression: " + exp));
+  }
+}
+
+/*  */
+
+var currentRecycleList = null;
+
+function preTransformNode$1 (el, options) {
+  if (el.tag === 'recycle-list') {
+    currentRecycleList = el;
+  }
+  if (currentRecycleList) {
+    // TODO
+    transformVBind(el);
+    transformVIf(el, options); // and v-else-if and v-else
+    transformVFor(el, options);
+  }
+}
+
+function transformNode$3 (el) {
+  if (currentRecycleList) {
+    // TODO
+  }
+}
+
+function postTransformNode (el) {
+  if (currentRecycleList) {
+    // <text>: transform children text into value attr
+    if (el.tag === 'text') {
+      transformText(el);
+    }
+  }
+  if (el === currentRecycleList) {
+    currentRecycleList = null;
+  }
+}
+
+var recycleList = {
+  preTransformNode: preTransformNode$1,
+  transformNode: transformNode$3,
+  postTransformNode: postTransformNode
+};
+
 var modules = [
+  recycleList,
   klass,
   style,
   props,
@@ -3669,8 +3835,8 @@ var directives = {
 
 var isReservedTag = makeMap(
   'template,script,style,element,content,slot,link,meta,svg,view,' +
-  'a,div,img,image,text,span,richtext,input,switch,textarea,spinner,select,' +
-  'slider,slider-neighbor,indicator,trisition,trisition-group,canvas,' +
+  'a,div,img,image,text,span,input,switch,textarea,spinner,select,' +
+  'slider,slider-neighbor,indicator,canvas,' +
   'list,cell,header,loading,loading-indicator,refresh,scrollable,scroller,' +
   'video,web,embed,tabbar,tabheader,datepicker,timepicker,marquee,countdown',
   true
@@ -3681,6 +3847,11 @@ var isReservedTag = makeMap(
 var canBeLeftOpenTag$1 = makeMap(
   'web,spinner,switch,video,textarea,canvas,' +
   'indicator,marquee,countdown',
+  true
+);
+
+var isRuntimeComponent = makeMap(
+  'richtext,trisition,trisition-group',
   true
 );
 
