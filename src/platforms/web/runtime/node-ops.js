@@ -57,3 +57,7 @@ export function setTextContent (node: Node, text: string) {
 export function setStyleScope (node: Element, scopeId: string) {
   node.setAttribute(scopeId, '')
 }
+
+export function setStyleScope (node: Element, scopeId: string) {
+  node.setAttribute(scopeId, '')
+}
