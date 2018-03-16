@@ -2,7 +2,7 @@
 
 // this will be preserved during build
 // $flow-disable-line
-const transpile = require('vue-template-es2015-compiler')
+// const transpile = require('vue-template-es2015-compiler')
 
 import { simplePathRE, fnExpRE } from 'compiler/codegen/events'
 import { functionCallRE, generateBinding } from 'weex/util/parser'
