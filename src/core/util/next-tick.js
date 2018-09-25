@@ -3,7 +3,7 @@
 
 import { noop } from 'shared/util'
 import { handleError } from './error'
-import { isIOS, isNative } from './env'
+import { isIOS, isNative, inWeex } from './env'
 
 const callbacks = []
 let pending = false
@@ -67,7 +67,7 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {
     // microtask queue but the queue isn't being flushed, until the browser
     // needs to do some other work, e.g. handle a timer. Therefore we can
     // "force" the microtask queue to be flushed by adding an empty timer.
-    if (isIOS) setTimeout(noop)
+    if (!inWeex && isIOS) setTimeout(noop)
   }
 } else {
   // fallback to macro
