@@ -36,6 +36,24 @@ const resolve = p => {
 }
 
 const builds = {
+  // runtime-only build (Reactor)
+  'reactor-dev': {
+    entry: resolve('src/platforms/reactor/entry.js'),
+    dest: resolve('dist/vue.reactor.js'),
+    format: 'umd',
+    transpile: false,
+    env: 'development',
+    banner
+  },
+  // runtime-only production build (Reactor)
+  'reactor-prod': {
+    entry: resolve('src/platforms/reactor/entry.js'),
+    dest: resolve('dist/vue.reactor.min.js'),
+    format: 'umd',
+    transpile: false,
+    env: 'production',
+    banner
+  },
   // Runtime only (CommonJS). Used by bundlers e.g. Webpack & Browserify
   'web-runtime-cjs-dev': {
     entry: resolve('web/entry-runtime.js'),
