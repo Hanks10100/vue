@@ -3,7 +3,6 @@
 import config from '../config'
 import Watcher from '../observer/watcher'
 import Dep, { pushTarget, popTarget } from '../observer/dep'
-import { isUpdatingChildComponent } from './lifecycle'
 
 import {
   set,
@@ -27,6 +26,8 @@ import {
   isServerRendering,
   isReservedAttribute
 } from '../util/index'
+
+import { registerMethods } from './reactor'
 
 const sharedPropertyDefinition = {
   enumerable: true,
@@ -86,7 +87,7 @@ function initProps (vm: Component, propsOptions: Object) {
         )
       }
       defineReactive(props, key, value, () => {
-        if (!isRoot && !isUpdatingChildComponent) {
+        if (!isRoot) {
           warn(
             `Avoid mutating a prop directly since the value will be ` +
             `overwritten whenever the parent component re-renders. ` +
@@ -260,6 +261,7 @@ function createGetterInvoker(fn) {
 }
 
 function initMethods (vm: Component, methods: Object) {
+  registerMethods(vm, methods)
   const props = vm.$options.props
   for (const key in methods) {
     if (process.env.NODE_ENV !== 'production') {

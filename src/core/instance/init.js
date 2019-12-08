@@ -1,13 +1,11 @@
 /* @flow */
 
-import config from '../config'
-import { initProxy } from './proxy'
+import config from 'core/config'
 import { initState } from './state'
 import { initRender } from './render'
 import { initEvents } from './events'
 import { mark, measure } from '../util/perf'
 import { initLifecycle, callHook } from './lifecycle'
-import { initProvide, initInjections } from './inject'
 import { extend, mergeOptions, formatComponentName } from '../util/index'
 
 let uid = 0
@@ -17,6 +15,7 @@ export function initMixin (Vue: Class<Component>) {
     const vm: Component = this
     // a uid
     vm._uid = uid++
+    // console.log('------> Vue.prototype._init', vm._uid)
 
     let startTag, endTag
     /* istanbul ignore if */
@@ -41,21 +40,15 @@ export function initMixin (Vue: Class<Component>) {
         vm
       )
     }
-    /* istanbul ignore else */
-    if (process.env.NODE_ENV !== 'production') {
-      initProxy(vm)
-    } else {
-      vm._renderProxy = vm
-    }
+
     // expose real self
+    vm._renderProxy = vm
     vm._self = vm
     initLifecycle(vm)
     initEvents(vm)
     initRender(vm)
     callHook(vm, 'beforeCreate')
-    initInjections(vm) // resolve injections before data/props
     initState(vm)
-    initProvide(vm) // resolve provide after data/props
     callHook(vm, 'created')
 
     /* istanbul ignore if */

@@ -7,7 +7,6 @@ import { initExtend } from './extend'
 import { initAssetRegisters } from './assets'
 import { set, del } from '../observer/index'
 import { ASSET_TYPES } from 'shared/constants'
-import builtInComponents from '../components/index'
 import { observe } from 'core/observer/index'
 
 import {
@@ -59,8 +58,6 @@ export function initGlobalAPI (Vue: GlobalAPI) {
   // this is used to identify the "base" constructor to extend all plain-object
   // components with in Weex's multi-instance scenarios.
   Vue.options._base = Vue
-
-  extend(Vue.options.components, builtInComponents)
 
   initUse(Vue)
   initMixin(Vue)

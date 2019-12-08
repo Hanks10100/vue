@@ -2,7 +2,7 @@
 
 import type Watcher from './watcher'
 import config from '../config'
-import { callHook, activateChildComponent } from '../instance/lifecycle'
+import { callHook } from '../instance/lifecycle'
 
 import {
   warn,
@@ -117,7 +117,7 @@ function flushSchedulerQueue () {
   resetSchedulerState()
 
   // call component updated and activated hooks
-  callActivatedHooks(activatedQueue)
+  // callActivatedHooks(activatedQueue)
   callUpdatedHooks(updatedQueue)
 
   // devtool hook
@@ -149,12 +149,12 @@ export function queueActivatedComponent (vm: Component) {
   activatedChildren.push(vm)
 }
 
-function callActivatedHooks (queue) {
-  for (let i = 0; i < queue.length; i++) {
-    queue[i]._inactive = true
-    activateChildComponent(queue[i], true /* true */)
-  }
-}
+// function callActivatedHooks (queue) {
+//   for (let i = 0; i < queue.length; i++) {
+//     queue[i]._inactive = true
+//     activateChildComponent(queue[i], true /* true */)
+//   }
+// }
 
 /**
  * Push a watcher into the watcher queue.
